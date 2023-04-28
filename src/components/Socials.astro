@@ -2,20 +2,31 @@
 import { SOCIALS } from "@config";
 import LinkButton from "./LinkButton.astro";
 import socialIcons from "@assets/socialIcons";
+import clsx from "clsx";
 
 export interface Props {
   centered?: boolean;
+  highlightOnHover?: boolean;
+  wide?: boolean;
 }
 
-const { centered = false } = Astro.props;
+const { centered = false, highlightOnHover, wide } = Astro.props;
 ---
 
-<div class={`social-icons ${centered ? "flex" : ""}`}>
+<div
+  class={clsx(
+    `social-icons ${centered ? "flex flex-row" : ""}`,
+    wide && "space-x-4"
+  )}
+>
   {
     SOCIALS.filter(social => social.active).map(social => (
       <LinkButton
         href={social.href}
-        className="link-button"
+        className={clsx(
+          "link-button",
+          highlightOnHover && "hover:bg-skin-inverted"
+        )}
         title={social.linkTitle}
       >
         <Fragment set:html={socialIcons[social.name]} />

@@ -1,6 +1,7 @@
 ---
 import { SITE } from "@config";
 import "@styles/base.css";
+import Socials from "@components/Socials.astro";
 
 const googleSiteVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION;
 
@@ -79,4 +80,13 @@ const socialImageURL = new URL(
   <body>
     <slot />
   </body>
+  <span
+    class="h-13 pointer-events-none fixed right-0 left-0 bottom-2 flex flex-row justify-center"
+  >
+    <div
+      class="pointer-events-auto flex-row items-center rounded-md bg-skin-accent p-2"
+    >
+      <Socials highlightOnHover={true} centered={true} wide={true} />
+    </div>
+  </span>
 </html>
