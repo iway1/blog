@@ -14,9 +14,9 @@ description: Improving user experience and saving boatloads of money by implemen
 headerImage: /assets/articles/gpt-caching-system/header.png
 ---
 
-import { Image } from '@astrojs/image/components';
-import PhoneScreenshotImage from '@components/PhoneScreenshotImage.astro';
-import VeryImportantText from '@components/VeryImportantText.astro';
+import { Image } from "@astrojs/image/components";
+import PhoneScreenshotImage from "@components/PhoneScreenshotImage.astro";
+import VeryImportantText from "@components/VeryImportantText.astro";
 
 I built a dynamic caching system for GPT responses for my recently released iOS app, [Joke Bots](https://jokebots.com). The caching system enables GPT responses to be reused between users in a desirable way, providing huge benefits both to my bank account and the user's experience.
 
@@ -49,13 +49,12 @@ In my app "Joke Bots" case, there were a few different prompts that the robots s
 3. Jokes - The robot tells a joke to the user
 4. Feedback - The user gives feedback to the robot about their joke, and the robot creates a response.
 
-<div class="flex flex-col sm:flex-row justify-center">
+<div class="flex flex-col justify-center sm:flex-row">
   <PhoneScreenshotImage
     source={"/assets/articles/gpt-caching-system/introduction.png"}
     label="First Meeting Response"
     className="mr-2"
   />
-
   <PhoneScreenshotImage
     source={"/assets/articles/gpt-caching-system/joke.png"}
     label="Joke Response"
@@ -70,7 +69,13 @@ The precise prompts for each request to GPT are based on the user's application 
 
 Also, remember we have different prompt types (AKA prompt templates).
 
-<Image width={736} height={330} alt="prompt flow" format="png" src="/assets/articles/gpt-caching-system/templates.png"/>
+<Image
+  width={736}
+  height={330}
+  alt="prompt flow"
+  format="png"
+  src="/assets/articles/gpt-caching-system/templates.png"
+/>
 
 For example, if the user is talking to "Buzzkill Bot" (the favorite of all the Joke Bots), then we need to make sure that GPT knows that it should act like Buzzkill Bot. The final prompt we send to GPT ends up being something like:
 
@@ -88,13 +93,15 @@ You're a robot named ${robotName}. You talk like a ${robotAdjective}.
 Tell me a joke about a ${jokeSubject}.
 ```
 
-Now, not only do we need to be able to identify types of responses (was the joke template used or the introduction template used?), but we also need to be able to identify the responses based on the inputs used to generate the prompts that we sent to GPT (the inputs are the things that might vary between responses)
+Now, not only do we need to be able to identify types of responses (was the joke template used or the introduction template used?), but we also need to be able to identify the responses based on the inputs used to generate the prompts that we sent to GPT.
 
 For example, in the case of asking a bot for a joke we need to be able to fetch a cached response based on (1) which bot it was and (2) what the prompt was.
 
 To make this super concrete, when we're asking our cache for a response it needs to be able to accurately return data for the following query:
 
-<VeryImportantText text={`"Cache, I need a Joke that Buzzkill Bot has told about a lizard."`}/>
+<VeryImportantText
+  text={`"Cache, I need a Joke that Buzzkill Bot has told about a lizard."`}
+/>
 
 The cache needs to be able to return a GPT Response matching those parameters. We wouldn't want our cache returning a joke about a gold chain when our user taps on "Lizard" in the app, would we?
 
