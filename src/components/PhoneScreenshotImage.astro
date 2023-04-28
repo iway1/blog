@@ -1,0 +1,26 @@
+---
+import { Image } from "@astrojs/image/components";
+import clsx from "clsx";
+
+export interface Props {
+  label: string;
+  source: string;
+  className?: string;
+}
+
+const { label, source, className } = Astro.props;
+---
+
+<div class={clsx("flex flex-col items-center", className)}>
+  <Image
+    format="png"
+    width={300}
+    height={600}
+    src={source}
+    alt={label}
+    id={label}
+  />
+  <label class="mt-[-14px] mb-4 text-skin-accent" for={label}>
+    {label}
+  </label>
+</div>

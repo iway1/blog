@@ -1,0 +1,367 @@
+---
+title: Building a Dynamic Caching System for GPT Responses
+author: Isaac Way
+pubDatetime: 2023-04-27T03:00:45.144Z
+postSlug: gpt-caching-system
+featured: true
+draft: false
+tags:
+  - openai
+  - ai
+  - prisma
+  - cache
+description: Improving user experience and saving boatloads of money by implementing caching for GPT responses
+headerImage: /assets/articles/gpt-caching-system/header.png
+---
+
+import { Image } from '@astrojs/image/components';
+import PhoneScreenshotImage from '@components/PhoneScreenshotImage.astro';
+import VeryImportantText from '@components/VeryImportantText.astro';
+
+I built a dynamic caching system for GPT responses for my recently released iOS app, [Joke Bots](https://jokebots.com). The caching system enables GPT responses to be reused between users in a desirable way, providing huge benefits both to my bank account and the user's experience.
+
+## Why tho?
+
+There are two _massive_ benefits to caching GPT responses.
+
+### 1. Saves costs on GPT tokens.
+
+Every request being sent to GPT was about 150-500 tokens, which means every time we reuse a response we're saving up to $0.001. Since we're projecting this app to have 1 Billion users by the end of the year, that's quite a bit of money we'll be saving.
+
+### 2. Greatly improves the user experience via decreased response time.
+
+OpenAI's APIs are slower than dirt, and when generating a new response it could take anywhere between 2 and 10 seconds, depending on the length of the response text and whether or not mercury was in retrograde.
+
+In cases where we use a cached response, the user can receive a near instant response to their api request to our server instead of 5+ full seconds. That's a huge win for the user, and therefore a huge win for the developer 🎉.
+
+## Dynamic, you say?
+
+To achieve true dynamic-cache-status, we needed to satisfy the following constraints.
+
+### Constraint 1 - Identifying Response Types
+
+There could be multiple prompt types sent to GPT, and when I query the response cache I need to be able to select them by the prompt type that was used to generate the response.
+
+In my app "Joke Bots" case, there were a few different prompts that the robots should produce for the user. They were:
+
+1. First Meeting - Each robot gives a unique response when they talk to the user for the first time.
+2. Greeting - The robot greets a user each subsequent time they begin a conversation
+3. Jokes - The robot tells a joke to the user
+4. Feedback - The user gives feedback to the robot about their joke, and the robot creates a response.
+
+<div class="flex flex-col sm:flex-row justify-center">
+  <PhoneScreenshotImage
+    source={"/assets/articles/gpt-caching-system/introduction.png"}
+    label="First Meeting Response"
+    className="mr-2"
+  />
+
+  <PhoneScreenshotImage
+    source={"/assets/articles/gpt-caching-system/joke.png"}
+    label="Joke Response"
+  />
+</div>
+
+So, there has to be a way to differentiate the response types in our cache - we should be able to ask for a response from our cache that was generated with a particular prompt.
+
+### Constraint 2 - Dynamic Prompt Inputs
+
+The precise prompts for each request to GPT are based on the user's application state (which robot is selected, what is the subject of the joke?).
+
+Also, remember we have different prompt types (AKA prompt templates).
+
+<Image width={736} height={330} alt="prompt flow" format="png" src="/assets/articles/gpt-caching-system/templates.png"/>
+
+For example, if the user is talking to "Buzzkill Bot" (the favorite of all the Joke Bots), then we need to make sure that GPT knows that it should act like Buzzkill Bot. The final prompt we send to GPT ends up being something like:
+
+```
+You're a robot named BuzzKill Bot. You talk like a buzzkill.
+
+Tell me a joke about a lizard.
+```
+
+Parts of this prompt change based on the input. In other words, there is a prompt template used to generate the above prompt to send to GPT. The template might look something like:
+
+```
+You're a robot named ${robotName}. You talk like a ${robotAdjective}.
+
+Tell me a joke about a ${jokeSubject}.
+```
+
+Now, not only do we need to be able to identify types of responses (was the joke template used or the introduction template used?), but we also need to be able to identify the responses based on the inputs used to generate the prompts that we sent to GPT (the inputs are the things that might vary between responses)
+
+For example, in the case of asking a bot for a joke we need to be able to fetch a cached response based on (1) which bot it was and (2) what the prompt was.
+
+To make this super concrete, when we're asking our cache for a response it needs to be able to accurately return data for the following query:
+
+<VeryImportantText text={`"Cache, I need a Joke that Buzzkill Bot has told about a lizard."`}/>
+
+The cache needs to be able to return a GPT Response matching those parameters. We wouldn't want our cache returning a joke about a gold chain when our user taps on "Lizard" in the app, would we?
+
+### Constraint 3 - Generic Response Types, Jokes Once Per User
+
+It was important that I only show each user each joke a single time. I wanted every joke to be unique for each user so they never saw the same joke twice.
+
+Specifically, I needed to do the following:
+
+#### 1. Check for a response in the cache
+
+- Response should match the response type and prompt input
+- Response should not have been previously seen by the user
+
+#### 2. If cached response found:
+
+- Mark response as "previously seen" by that user
+- Return cached response
+
+#### 3. If no cached response found:
+
+- Ask GPT for a new response
+- Store in cache and mark as seen by user
+- Return response
+
+This algorithm needed to run on every type of response in the same way. This task is a bit involved to implement and the entire application breaks if it doesn't work properly, so I didn't want to be copy and pasting any of this logic because it would make the code that much harder to deal with. Ideally we can build something that's a generic solution and that is simple to understand while meeting the constraints.
+
+## 🏆 The Solution 🏆
+
+In the end our cache is just a single database table with a couple of well-thought-out columns.
+
+So how do we solve our constraints (1) and (2)? We need to be able to identify responses in the cache generically with respect to their prompt template and prompt inputs. 🤔
+
+Enter the "array of strings" data structure.
+
+### The Almighty "Array of Strings" (AKA the cache key)
+
+To query GPTResponses from our cache correctly, we need only construct an array of strings for each GPTResponse that includes a unique identifier for the prompt template and any prompt input parameters. Lets call this our "Cache Key"
+
+This approach works because we're assuming that the prompts we send to gpt are just a function of these input parameters and the template. If we break that assumption, then the caching system will no longer work (we should never produce a different prompt with the same cache key).
+
+Our schema for GPT responses might look something like this:
+
+```prisma
+model GPTResponse {
+  id String @unique @default(uuid())
+
+  text String
+  key String[]
+}
+```
+
+The `key` column is what we query our cache on. It's an identifier for the prompt that generated the response.
+
+Now, when we query our cache or create new GPTResponse rows, we just need to make sure we set the key correctly and query for the correct key. For example, lets say we're caching a response for Buzzkill Bot, who just told a joke about a lizard. Creating a new response here would look like this.
+
+```ts
+const response = await fetchGptResponse(
+  `You're a robot named buzzkill bot. Tell a joke about a lizard.`
+);
+
+await prisma.gptResponse.create({
+  data: {
+    text: response.text,
+    key: ["joke", "buzzkill", "lizard"],
+  },
+});
+```
+
+Or if it was instead a joke from Gangsta Bot about a gold chain, the key would be:
+
+```ts
+await prisma.gptResponse.create({
+  data: {
+    text: response.text,
+    key: ["joke", "gangsta", "gold chain"],
+  },
+});
+```
+
+Notice that the first item in the array is a unique identifier for the prompt template we used (this is the "joke" template), after that we have the inputs to the prompt. Of course, we wouldn't type out full keys or prompts like this in our code. Rather, we'd have some reusable function:
+
+```ts
+async function createJoke({ bot, subject }: { bot: string; subject: string }) {
+  const response = await fetchGptResponse(
+    `You're a robot named ${bot}. Tell a joke about ${subject}`
+  );
+
+  const dbResponse = await prisma.gptResponse.create({
+    data: {
+      text: response.text,
+      key: ["joke", bot, subject],
+    },
+  });
+
+  return dbResponse;
+}
+```
+
+## Querying For Cached Responses
+
+When we want to query a response from the cache we look for a response with a matching key.
+
+```ts
+async function getCachedJoke({
+  bot,
+  subject,
+}: {
+  bot: string;
+  subject: string;
+}) {
+  const responseFromCache = await prisma.gptResponse.findFirst({
+    where: {
+      key: {
+        equals: ["joke", bot, subject],
+      },
+    },
+  });
+  return responseFromCache;
+}
+```
+
+So we're simply searching the table for a matching key. As long as we make sure our keys are set appropriately, this approach will give us the cached joke we're looking for.
+
+We would use the function like this:
+
+```ts
+const cachedJoke = await getCachedJoke({
+  bot: "buzzkill",
+  subject: "lizard",
+});
+```
+
+And this could be thought of as asking our cache for "A joke from Buzzkill Bot about a lizard". Now we can query our cache for the exact response type we're looking for based on a users application state (the prompt input) quite easily 🔥
+
+### Alternative Solution - Just use the prompt as the key
+
+Another approach could be to just have the entire prompt be the cache key. This would also allow us to find cached responses based on prompt template type and inputs. Something like
+
+```prisma
+model GPTResponse {
+  key String
+  text String
+}
+```
+
+And then query like:
+
+```ts
+const cachedResponse = await prisma.gptResponse.findFirst({
+  where: {
+    key: "You're a robot named Buzzkill Bot...",
+  },
+});
+```
+
+This would work well for simply fetching one cached response, but what if we want to get all jokes? Or all jokes from Buzzkill Bot? Or All jokes about a lizard?
+
+This is very straightforward with the array-of-strings approach from earlier, but impossible to do reliably with the "full prompt as key" approach:
+
+```ts
+// Using the Array Of Strings approach
+// All Jokes - just check if the "key" array has "joke"
+const allJokes = await prisma.gptResponse.findMany({
+  where: {
+    key: {
+      has: "joke",
+    },
+  },
+});
+
+// Search for all rows with a key array containing both "joke" and "lizard".
+const allJokesAboutLizards = await prisma.gptResponse.findMany({
+  where: {
+    AND: [
+      {
+        key: {
+          has: "joke",
+        },
+      },
+      {
+        key: {
+          has: "lizard",
+        },
+      },
+    ],
+  },
+});
+
+// Same idea
+const allJokesFromBuzzkillBot = await prisma.gptResponse.findMany({
+  where: {
+    AND: [
+      {
+        key: {
+          has: "joke",
+        },
+      },
+      {
+        key: {
+          has: "buzzkill",
+        },
+      },
+    ],
+  },
+});
+```
+
+Again, we couldn't do this reliably if we're querying based only on the full prompt.
+
+Plus, with the "prompt as cache key" approach we are limited to always using the same prompt for the same inputs. What if we want to randomly modify the prompt? We just couldn't.
+
+So, the array-of-strings approach is just really flexible and way better.
+
+## Making Sure the user only sees each response once
+
+The last constraint is to make sure that users only see each response once. I stuck to a very simple approach, and just attached a list of GPTResponse ids as a column in the user table:
+
+```prisma
+model User {
+  // stuff...
+
+  seenGptResponseIds String[]
+}
+```
+
+Then I query based on the response ids using the notIn operator. If none is found, I create a new one:
+
+```ts
+const user = await getUser(); // get the user that is sending the request;
+
+let response = await prisma.gptResponse.findFirst({
+  where: {
+    key: {
+      equals: ["joke", "buzzkill", "lizard"],
+    },
+    id: {
+      notIn: user.seenGptResponseIds,
+    },
+  },
+});
+
+if (!response) {
+  // No unseen joke about a lizard from Buzzkill Bot was found so create a new one
+  response = await createJoke({
+    bot: "buzzkill",
+    subject: "lizard",
+  });
+}
+
+// Mark as seen by the user
+await prisma.user.update({
+  where: {
+    id: user.id,
+    seenGptResponseIds: {
+      push: response.id,
+    },
+  },
+});
+
+return response;
+```
+
+So now our cache system is complete. Our backend will store responses from GPT and reuse them in a way that makes sense for the user's application state, and generate new responses on the fly when there aren't any unseen cached responses.
+
+💰 Big Savings 💰
+
+😊 Happy Users 😊
+
+Thanks for reading :)
