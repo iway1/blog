@@ -28,15 +28,7 @@ const socialCount = SOCIALS.filter(social => social.active).length;
         My name is Isaac Way, welcome to my blog. I build stuff and write about
         it here.
       </p>
-      <p>
-        Read the blog posts or check
-        <LinkButton
-          className="hover:text-skin-accent underline underline-offset-4 decoration-dashed"
-          href="https://github.com/satnaing/astro-paper#readme"
-        >
-          README
-        </LinkButton> for more info.
-      </p>
+
       {
         // only display if at least one social link is enabled
         socialCount > 0 && (
