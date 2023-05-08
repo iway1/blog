@@ -146,7 +146,7 @@ export const restaurantsApi = createQueryHook({
 });
 ```
 
-This is why I couldn't use zodios. zodios assumes your function is just an axios call. Mine is not. In vanilla `react-query` is that your query function can be any asynchronous function, including just returning some data from an object like the above.
+This is why I couldn't use zodios. zodios assumes your function is just an axios call. Mine is not. In vanilla `react-query` your query function can be any asynchronous function, including just returning some data from an object like the above.
 
 SO, with this approach we can actually build out all of our front end logic, pull our data from our queries and such, and it'll behave just like it would with real data (only it's fake data).
 
@@ -156,11 +156,14 @@ When working with a massive unknown of not knowing when/if/how the backend would
 
 ## Typing Component Props
 
-So, in this story we have our backend modeled. Another important design decision to make this all work smoothly is to _couple components to our data types_. In React, this just means typing our props to our zod schema types:
+So, in this story we have our backend modeled. Another important design decision to make this all work smoothly is to _couple top level components to our data types_. In React, this just means typing our props to our zod schema types:
 
 ```tsx
 function MenuItemCard({ item }: { item: MenuItem }) {
   // ...
+
+  // It's a wrapper for a generic "Card" component
+  return <Card>{/* stuff */}</Card>;
 }
 ```
 
