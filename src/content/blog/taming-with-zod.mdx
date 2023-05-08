@@ -59,7 +59,7 @@ Now are data is type safe at compile time and run time. That's freaking huge. An
 
 I can't understate how powerful this validation layer is. It saves a hilarious amount of dev time, because it immediately catches mismatches between what your front end expects and what the backend actually returns.
 
-Zod will throw a "ZodError" as soon as you get some bad data, that makes it 100x faster to fix (if you were ever going to fix it) than just having your stuff break in random places.
+Zod will throw a "ZodError" as soon as you get some bad data, that makes it 100x faster to fix than just having your stuff break in random places.
 
 If you don't catch runtime type mismatches with a validation layer, you will be catching them when your components explode in unforeseeable ways.
 
@@ -107,7 +107,7 @@ function Component() {
 
 I won't go into to much detail about how this works, that's not really the point. The point is that we leveraged a generalization of a highly repetitive task, which made it faster and more reliable to implement our pipeline of fetch->validate->cache.
 
-Note that what I built is basically what zodios does, which is an awesome package that creates a typesafe axios client that uses zod for validation. It has a free `react-query` wrapper out of the box.
+Note that what I built is basically what [zodios](https://github.com/ecyrbe/zodios) does, which is an awesome package that creates a typesafe axios client that uses zod for validation. It has a free `react-query` wrapper out of the box.
 
 But I couldn't use zodios here. Why? Well that brings me to my tangent.
 
@@ -221,7 +221,7 @@ function MenuItemCard({ item }: { item: MenuItem }) {
 
 Huge time saver - This is only possible because we are passing the full type around. I'm not saying components should always be typed to a backend data type, but doing it frequently does make a lot of sense for components that only need to ever show data from one type on the backend.
 
-Some people avoid coupling at all costs, and believe that no matter what you shouldn't couple components to backend data types. I'm obviously not one of those people, coupling has clear advantages when used correctly and here it was invaluable.
+Some people avoid coupling at all costs, and believe that no matter what you shouldn't couple components to backend data types. I'm obviously not one of those people, tight coupling has clear advantages when used correctly and here it was invaluable.
 
 ## The final step - Connecting to the Backend
 
@@ -250,7 +250,7 @@ So my front end originally thought that the end point would return a string with
 }
 ```
 
-HMM. Not even close. What do I do? Should I rebuild the logic for dealing with this end point? That sounds expensive (and it would be).
+HMM. Not even close. What do I do? Should I rebuild the logic for dealing with this end point? That sounds expensive.
 
 Instead, lets just map the type that the backend returns to what my front end already expects:
 
@@ -270,7 +270,7 @@ export const RewardStatusSchema = z
   });
 ```
 
-Now everything works. We still validate the data to make sure our code actually knows what the backend is returning at runtime, and then just `.transform` it to what our components are already built to work with.
+After this ridiculous transformation, everything works. We still validate the data to make sure our code actually knows what the backend is returning at runtime, and then just `.transform` it to what our components are already built to work with.
 
 Took two minutes, and I didn't have to change any application logic at all. This is an extreme example, but the point is that zod enabled a clean and consistent method for coercing backend data types into something my front end wanted. A more common example would be dealing with values that could be null when I had made a guess that they would always be defined:
 
@@ -283,12 +283,8 @@ const RestaurantSchema = z.object({
 });
 ```
 
-I didn't know this during development, but some times the description is null. This might break stuff because the front end thinks it is always defined. So I simply coerce null into an empty string.
+I didn't know this during development, but some times the description is null. This might break stuff because the front end thinks it is always defined. So I simply coerce null into an empty string. Obviously this is more of a bandaid than a robust solution, but again the deadline here was quite short.
 
 After performing these types of transforms with zod on any data types that didn't line up, everything worked. There are other ways to map one data type to another, but zod provides a concise and clean syntax for this type of data mapping so it works great here.
 
-### Final Words
-
-The above is a story of using zod in a less-than-ideal situation to get the job done. Ideally, you know what your backend looks like before building out the front end. But here, zod helped me deal with less-than-ideal circumstances and make the project as successful as possible.
-
-Thanks for reading! :)
+The end. Thanks for reading :)
