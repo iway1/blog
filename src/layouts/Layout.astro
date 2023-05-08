@@ -46,7 +46,12 @@ const socialImageURL = new URL(
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalURL} />
-    <meta property="og:image" content={socialImageURL} />
+    <meta
+      property="og:image"
+      content={`https://og-guru.vercel.app/api/image/clhbgsu310000m9080azzhfkq?postDescription=${encodeURIComponent(
+        description
+      )}&postTitle=${encodeURIComponent(title)}`}
+    />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />

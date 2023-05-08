@@ -1,0 +1,294 @@
+---
+title: Taming Asynchronous Development with Zod
+description: A story about using zod to be productive while the backend is in flux
+author: Isaac Way
+pubDatetime: 2023-05-04T02:52:03.264Z
+postSlug: gpt-caching-system
+featured: true
+draft: false
+tags:
+  - zod
+  - react native
+---
+
+8 Weeks ago I was tasked to build the front end for a React Native mobile app, with the goal of having the entire application built and hooked up with the backend within that 8 week period.
+
+The twist? I'd be working with an out-of-house backend developer that I had little communication with (nothing more than some infrequent Discord messages), and the backend was not nearly finished at the time of me starting on the front end.
+
+Sounds... fun?
+
+We can make it a success, if only we leverage the power of `zod`.
+
+## The Approach
+
+### Model Our Backend With Schemas
+
+The idea is we build a representation of our backend's data model as a big bunch of zod schemas.
+
+This app was an app to plan meals at restaurants events with your friends, so one schema we had was a restaurant schema that looked kind of but not really like this:
+
+```ts
+export const MenuItemSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+});
+
+export type MenuItem = z.infer<typeof MenuItemSchema>;
+
+const RestaurantSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  menuItems: MenuItemSchema.array(),
+});
+
+export type RestaurantSchema = z.infer<typeof RestaurantSchema>;
+```
+
+Note that I'm nesting schemas in schemas here. That's convenient to do when modeling something complex (for example perhaps MenuItemSchema shows up in other data types as well).
+
+Now when we fetch the list of restaurants from the backend, we make sure validate with:
+
+```ts
+async function fetchRestaurants() {
+  const response = await axios.get("/restaurants");
+  return RestaurantSchema.array().parse(response.data);
+}
+```
+
+Now are data is type safe at compile time and run time. That's freaking huge. Anything going into our app can be trusted, and we get all the benefits of typescript after only writing a simple schema.
+
+I can't understate how powerful this validation layer is. It saves a hilarious amount of dev time, because it immediately catches mismatches between what your front end expects and what the backend actually returns.
+
+Zod will throw a "ZodError" as soon as you get some bad data, that makes it 100x faster to fix (if you were ever going to fix it) than just having your stuff break in random places.
+
+If you don't catch runtime type mismatches with a validation layer, you will be catching them when your components explode in unforeseeable ways.
+
+## Generalizing fetch -> validate -> cache
+
+The validation layer sits in between the networking layer (axios, fetch), and the data cache (react query in our case).
+
+Simply visualized, it's:
+
+![Data Flow](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/b2l0hwluogdq7nhtgja5.png)
+
+In code, we have many many fetches, and many different schemas representing backend data. Plus, we have many different data caches!
+
+This can become quite repetitive if having to do it for 50 end points. Sounds like a great candidate for a generalized solution.
+
+I made a custom wrapper called `createQueryHook` that generates a react query hook that automatically validates with the zod schema, as well as manages query keys:
+
+```tsx
+type Vars = {
+  eventId: number;
+};
+
+export const eventDetailApi = createQueryHook({
+  outputSchema: EventDetailSchema,
+  queryFn: async (ctx: QueryContext<Vars>) => {
+    return await ctx.client.get(`/v1/events/${ctx.vars.eventId}`);
+  },
+  baseQueryKey: "event-detail",
+});
+```
+
+Then in my component I do:
+
+```tsx
+function Component() {
+  const eventDetailQuery = eventDetailApi.useQuery({eventId: params.eventId})
+
+  // when i need to invalidate
+  eventDetailQuery.invalidate({eventId: params.eventId});
+
+  // when I need to set data
+  eventDetailQuery.setData({eventId, params.eventId}, oldData=>{/*new data*/})
+}
+```
+
+I won't go into to much detail about how this works, that's not really the point. The point is that we leveraged a generalization of a highly repetitive task, which made it faster and more reliable to implement our pipeline of fetch->validate->cache.
+
+Note that what I built is basically what zodios does, which is an awesome package that creates a typesafe axios client that uses zod for validation. It has a free `react-query` wrapper out of the box.
+
+But I couldn't use zodios here. Why? Well that brings me to my tangent.
+
+## How to deal with not having a completed backend to test against?
+
+I simply did not have a complete backend. I didn't have a mock backend. I had nothing. So how do I develop something that's as close to finished as possible just short of hooking up to the backend?
+
+Easy, we "mock" the networking layer. The trick is that we _only mock the networking layer_. The cache layer and the validation layer should be fully functional so that the only tasks left to do once everything is all said and done is write a fetch.
+
+In my case, I simply had a file called `debugData` that exported a bunch of mocked data, _and that mock data was typed to my zod schemas_. This makes my mocking layer typesafe as well, which sped up development:
+
+```tsx
+function getRestaurant(): z.input<typeof RestaurantSchema> {
+  return {
+    id: getDebugId("restaurant"),
+    name: "Darphon's",
+    description:
+      "Hearty Southern cooking paired with wines & cocktails in funky-chic quarters with an open kitchen.",
+  };
+}
+
+export const debugData = {
+  restaurants: [getRestaurant(), getRestaurant()],
+};
+```
+
+With this, I can build out my entire application, save the fetching layer:
+
+```ts
+export const restaurantsApi = createQueryHook({
+  outputSchema: RestaurantSchema,
+  queryFn: async (ctx: QueryContext<Vars>) => {
+    return debugData.restaurants;
+  },
+  baseQueryKey: "restaurants",
+});
+```
+
+This is why I couldn't use zodios. zodios assumes your function is just an axios call. Mine is not. In vanilla `react-query` is that your query function can be any asynchronous function, including just returning some data from an object like the above.
+
+SO, with this approach we can actually build out all of our front end logic, pull our data from our queries and such, and it'll behave just like it would with real data (only it's fake data).
+
+Don't you see? This made me un-blockable. I wasn't dependent on the backend developers work whatsoever, so I never had to stop and wait for anything or context switch.
+
+When working with a massive unknown of not knowing when/if/how the backend would actually be ready, this gave me a lot of control over my ability to be productive.
+
+## Typing Component Props
+
+So, in this story we have our backend modeled. Another important design decision to make this all work smoothly is to _couple components to our data types_. In React, this just means typing our props to our zod schema types:
+
+```tsx
+function MenuItemCard({ item }: { item: MenuItem }) {
+  // ...
+}
+```
+
+This has a couple of big advantages:
+
+1. No data type -> prop type mapping. Since our components just expect a data type that our backend returns, we don't have to spend time mapping the data types properties to the component props.
+2. Easier refactoring.
+
+If we change the name of the property in our zod type, it will update the property name in all of our components:
+
+```tsx
+// Before
+const MenuItemSchema = z.object({
+  itemCategory: z.string(),
+});
+
+function MenuItemCard({ item }: { item: MenuItem }) {
+  return (
+    <View>
+      <Text>{item.itemCategory}</Text>
+    </View>
+  );
+}
+
+// After renaming .itemCategory => .category
+const MenuItemSchema = z.object({
+  category: z.string(),
+});
+
+function MenuItemCard({ item }: { item: MenuItem }) {
+  return (
+    <View>
+      <Text>{item.category}</Text>
+    </View>
+  );
+}
+```
+
+Also, if a property gets added into our schema (maybe the backend is now returning some new piece of data), then that property will be available in all of our components immedately without multiple layers of refactoring.
+
+For instance, maybe we now need to show the price of each menu item in the app, so now the backend is returning a "price" property along with the previous data. All we have to do is add that property to our schema and it's available everywhere:
+
+```tsx
+const MenuItemSchema = z.object({
+  category: z.string(),
+  price: z.number(),
+});
+
+function MenuItemCard({ item }: { item: MenuItem }) {
+  return (
+    <View>
+      <Text>{item.category}</Text>
+      <Text>{`$${item.price}`}</Text>
+    </View>
+  );
+}
+```
+
+Huge time saver - This is only possible because we are passing the full type around. I'm not saying components should always be typed to a backend data type, but doing it frequently does make a lot of sense for components that only need to ever show data from one type on the backend.
+
+Some people avoid coupling at all costs, and believe that no matter what you shouldn't couple components to backend data types. I'm obviously not one of those people, coupling has clear advantages when used correctly and here it was invaluable.
+
+## The final step - Connecting to the Backend
+
+Now we're 7 weeks into the project with one week left. We've got to hook up as much of the front end as possible to the backend. All the components are built, the caching layer is complete, now we just need to fetch the data and get it showing in our app.
+
+### Mapping Types
+
+Early on in development, I made a lot of guesses as to what certain end points that may or may not currently exist would be returning in the future.
+
+For instance, the app had the concept of a "Reward" which was basically coupon that users could redeem at restaurants. I knew there would be an endpoint that returned the status of the reward (whether or not it had been claimed or not), but I didn't know what that end point would actually return. So I guessed:
+
+```ts
+const RewardStatusSchema = z.enum(["UNCLAIMED", "CLAIMED", "REDEEMED"]);
+```
+
+So my front end originally thought that the end point would return a string with one of the above values. Turns out, that's not even close to what it would return. What it actually returned was a json object something like this:
+
+```json
+{
+  "active_reward": {
+    "owner_id": 0,
+    "reward_id": 0,
+    "updated_at": "timestamp",
+    "is_redeemed": false
+  }
+}
+```
+
+HMM. Not even close. What do I do? Should I rebuild the logic for dealing with this end point? That sounds expensive (and it would be).
+
+Instead, lets just map the type that the backend returns to what my front end already expects:
+
+```ts
+export const RewardStatusSchema = z
+  .object({
+    active_reward: ActiveRewardSchema.nullish(),
+  })
+  .transform(v => {
+    if (!v.active_reward) {
+      return "UNCLAIMED" as const;
+    }
+    if (v.active_reward && !v.active_reward.is_redeemed) {
+      return "CLAIMED" as const;
+    }
+    return "REDEEMED";
+  });
+```
+
+Now everything works. We still validate the data to make sure our code actually knows what the backend is returning at runtime, and then just `.transform` it to what our components are already built to work with.
+
+Took two minutes, and I didn't have to change any application logic at all. This is an extreme example, but the point is that zod enabled a clean and consistent method for coercing backend data types into something my front end wanted. A more common example would be dealing with values that could be null when I had made a guess that they would always be defined:
+
+```ts
+const RestaurantSchema = z.object({
+  description: z
+    .string()
+    .nullish()
+    .transform(v => (!v ? "" : v)),
+});
+```
+
+I didn't know this during development, but some times the description is null. This might break stuff because the front end thinks it is always defined. So I simply coerce null into an empty string.
+
+After performing these types of transforms with zod on any data types that didn't line up, everything worked. There are other ways to map one data type to another, but zod provides a concise and clean syntax for this type of data mapping so it works great here.
+
+### Final Words
+
+The above is a story of using zod in a less-than-ideal situation to get the job done. Ideally, you know what your backend looks like before building out the front end. But here, zod helped me deal with less-than-ideal circumstances and make the project as successful as possible.
+
+Thanks for reading! :)
