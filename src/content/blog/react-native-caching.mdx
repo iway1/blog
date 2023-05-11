@@ -1,0 +1,271 @@
+---
+title: Effective React Native Cache Management with React Query
+author: Isaac Way
+pubDatetime: 2023-05-11T20:07:45.173Z
+postSlug: react-native-cache-management
+featured: true
+draft: false
+tags:
+  - react-query
+  - cache
+  - front-end
+description: The Mutate then Invalidate pattern in React Query
+---
+
+Most state in most applications is _server state_. Server state is state that represents some data from a remote data source.
+
+As such, managing the cache represents a large chunk of the problem that we're trying solve when building common front end apps. In apps with a lot of mutations (frequently updating server data from the front end), we have to do a lot of cache management.
+
+If you manage your cache properly, your application will behave as expected and your users will be happy. If you do not, your users will be confused as to why the post they just created isn't appearing in their feed and your application will look broken.
+
+This article give a brief strategy of how we can manage our cache properly with react-query in React Native with Mutate then Invalidate.
+
+# Mutate and Invalidate
+
+A common and popular strategy in React development is to perform a mutation and then invalidate our cache. Invalidating the cache can be thought of as marking the data stored in the cache as "out of date".
+
+If we invalidate a cache in react-query, we're telling `react-query` that the data is out of date and it will be refetched immediately in the background if there is a component subscribed to that query.
+
+Let's say we have a query that fetches post for a user:
+
+```tsx
+function usePostQuery() {
+  return useQuery({
+    queryFn: async () => axios.get("posts"),
+    queryKey: ["posts"],
+  });
+}
+```
+
+Our "cache" is the stuff stored in `.data` of the query:
+
+```tsx
+const postsQuery = usePostsQuery();
+
+// cache
+postsQuery.data;
+```
+
+We want to allow users to create posts, so then our mutation might look like this:
+
+```tsx
+const queryClient = useQueryClient();
+const postMutation = useMutation(
+  async postData => axios.post("/post", postData),
+  {
+    onSuccess: () => {
+      // Without this, app is broken
+      queryClient.invalidateQueries(["posts"]);
+    },
+  }
+);
+```
+
+So we perform a mutation, and then invalidate the cache to trigger a refetch of the data.
+
+It's important we understand _why_ we're invalidating the cache:
+
+_We're invalidating the cache because we know that whatever data is in the cache is now out of sync with the server, and we want the data to be in sync._
+
+When our user creates a post, we want them to see that the post has been created, and for them to see that their post is in fact created we need the cache to be updated with the latest server data.
+
+## Added Complexities in React Native
+
+In a React applications (not React Native), cache management is simpler because users are only shown one page at a time.
+
+As such, any time the user navigates they will see fresh data because the default behavior of react-query is that it will refetch the data when a component mounts that subscribes to some query.
+
+If the user navigates back and forth between some routes, by default the data for each page is going to be refetched on each navigation. So, there is less opportunity for users to be shown stale data that might make the app look like it's not working.
+
+But in React Native, we commonly use stack navigators. One thing to understand about stack navigators is that screens in the stack stay mounted when we add a new screen to the stack:
+
+```ts
+function ScreenPostsFeed() {
+  const posts = usePostsQuery();
+  const nav = useNavigation();
+  function onPressButton() {
+    nav.navigate("screen-two");
+  }
+  // ...
+}
+
+function ScreenCreatePost() {
+  const nav = useNavigation();
+  const queryClient = useQueryClient();
+  const createPost = useMutation(createPost, {
+    onSuccess: () => {
+      nav.goBack();
+      queryClient.invalidateQueries(["posts"]);
+    },
+  });
+
+  function onSubmitPost(data) {
+    createPost.mutate(data);
+  }
+}
+```
+
+Here we have a screen for viewing posts, and a screen for creating posts. When we navigate from ScreenPostsFeed to ScreenCreatePost, ScreenPostsFeed stays mounted.
+
+If we forget to invalidate our posts cache after creating a new post, the user will not see their new post when they navigate back to the feed. Again, this open happens because our posts feed screen stays mounted (this wouldn't be an issue in the web.).
+
+So, in React Native we're not only having to think about caches that are being affected on the current screen, but we also have to be aware of data that may be being shown on screens that are mounted in the stack navigator. This makes things more complicated.
+
+## How do I know what to invalidate and when?
+
+This is the important part - if we don't do this right our application is broken. What do we invalidate, and when, and why?
+
+It depends entirely on the application. We have to know what's happening on our back end, we have to know what data is being shown to the user and where.
+
+Most of the time, we at least need to invalidate caches that we know have been changed after some mutation. When there's complex stack navigation involved, it may be hard to reason about which queries need to be invalidated.
+
+In the case of creating posts it's very obvious what needs to happen, but there are cases where it can be much less intuitive.
+
+## More Complex Example
+
+Let's say we have an app that allows users to work through some learning content. The learning content items are each divided into "courses".
+
+We have three screens (note I'm ignoring loading states here):
+
+```tsx
+function ScreenHome() {
+  const homeScreenQuery = useHomeScreenQuery();
+  const coursesQuery = useCoursesQuery();
+  const nav = useNavigate();
+
+  // ...
+
+  return (
+    <View>
+      <Text>{`You've completed ${homeScreenQuery.data.completedItems}`}</Text>
+      {coursesQuery.data.courses.map(course => {
+        return (
+          <TouchableOpacity
+            onPress={() => {
+              nav.navigate("courseDetail", {
+                courseId: course.id,
+              });
+            }}
+          >
+            <Text>{course.name}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+```
+
+Above is the home screen that shows some data about the users overall progress in their learning journey, and also allows them to navigate to specific courses in the app.
+
+It has a "homeScreenQuery", which returns some data about the users learning progress throughout the app, specifically "completedItems" which is the number of content items the user has completed.
+
+```tsx
+function ScreenCourseDetail() {
+  const { params } = useRoute();
+  const nav = useNavigation();
+  const courseDetailQuery = useCourseDetailQuery(params.courseId);
+
+  // ...
+
+  return (
+    <View>
+      {courseDetailQuery.data.contentItems.map(content => {
+        return (
+          <TouchableOpacity
+            onPress={() => {
+              nav.navigate("contentDetail", {
+                contentId: content.id,
+              });
+            }}
+          >
+            <Text>{content.name}</Text>
+            <Text>{`Completed: ${content.isCompleted}`</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+```
+
+Next the user navigates down to the course details screen, which shows all of the content available in the selected course via the "courseDetailQuery". It renders the name of the content as well as whether each content item is completed.
+
+Here users can tap on content to navigate to the content detail screen.
+
+```tsx
+function ScreenContentDetail() {
+  const { params } = useRoute();
+  const queryClient = useQueryClient();
+  const contentDetailQuery = useContentDetailQuery(params.contentId);
+  const markContentCompleteMutation = useMutation(
+    async () => {
+      await axios.post("content/mark-complete", { complete: true });
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(["content-detail", params.contentId]);
+        queryClient.invalidateQueries([
+          "course-detail",
+          contentDetailQuery.data.courseId,
+        ]);
+      },
+    }
+  );
+
+  //...
+
+  return (
+    <View>
+      <Text>{contentDetailQuery.data.text}</Text>
+      <TouchableOpacity
+        onPress={() => {
+          markContentCompleteMutation.mutate();
+        }}
+      >
+        <Text>Mark completed</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+```
+
+Finally, we have a content detail screen that allows users to read the content and then mark it as completed when they're done. To mark the content as complete, we use the "markContentCompleteMutation", which will send a request to our backend marking the content complete.
+
+Then on success we invalidate the content detail mutation, as well as the course detail query (because remember the course detail screen is still mounted and is showing data about the content that has changed from our mutation, whether or not each content item has been completed)
+
+So we invalidated the relevant data after mutation. We're good to go, right? WRONG!
+
+There's also data on the top level home screen that's being rendered that should have changed as well! Remember these guys?
+
+```tsx
+const homeScreenQuery = useHomeScreenQuery();
+
+// ...
+
+<Text>{`You've completed ${homeScreenQuery.data.completedItems}`}</Text>;
+```
+
+Now our app looks broken, because when the user returns to the home screen the data in "homeScreenQuery" will not have been updated with the new completed items count. Oof.
+
+This illustrates how we can easily make errors when it comes to less-intuitive mutation / cache relationships, and how those can happen more easily in React Native.
+
+We should've also included this line in our onSuccess callback:
+
+```tsx
+queryClient.invalidateQueries(["home"]);
+```
+
+Great, it's fixed. (By the way, one thing to consider is now we're invalidating and refetching data on 3 separate screens at once which can trigger them all to rerender because screens will rerender if they're in the stack and their state changes. This may or may not cause performance problems that we need to deal with.)
+
+## React Native Caching Hard
+
+Because of screens staying mounted during navigation, putting extra thought into how we're managing our cache React Native becomes necessary.
+
+At the end of the day, it comes down to knowing which server data is updated and when, and making sure that when the user sees it that it's as up to date as is required to make our app function like we want it too.
+
+It's worth slowing down any time we have a mutation and thinking about what data is now out of sync with the server so we avoid these unintuitive bugs.
+
+The good news is that once we get good at doing this correctly, we'll be able to effectively deal with a large amount of the complexity present in many React Native applications.
+
+Thanks for reading :)
