@@ -258,6 +258,40 @@ queryClient.invalidateQueries(["home"]);
 
 Great, it's fixed. (By the way, one thing to consider is now we're invalidating and refetching data on 3 separate screens at once which can trigger them all to rerender because screens will rerender if they're in the stack and their state changes. This may or may not cause performance problems that we need to deal with.)
 
+## Other (Possibly simpler) Approaches
+
+The approach we're taking here refetches the data on the screens in the stack that aren't currently being shown whenver we create a mutation. This means that when a user navigates back to the home screen, the new data will already have been fetched (which can be good).
+
+The downside of this approach is that we have to think about which mutations are affecting which other screens in the stack. There is another way - just refetch the data whenever the screen becomes "focused".
+
+The advantage of the "refetch on focus" approach is that we have to do a lot less thinking and there isn't any chance that a user visits a screen and is stuck looking at invalid data. Plus - it will work regardless of the navigation structure of your app, so if some new mutations start happening that are now affecting the homeScreenQuery data it won't matter.
+
+From (Tanstack's documentation page)[https://tanstack.com/query/latest/docs/react/react-native#refresh-on-screen-focus], we can do something like:
+
+```ts
+import React from "react";
+import { useFocusEffect } from "@react-navigation/native";
+
+export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
+  const firstTimeRef = React.useRef(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (firstTimeRef.current) {
+        firstTimeRef.current = false;
+        return;
+      }
+
+      refetch();
+    }, [refetch])
+  );
+}
+```
+
+Or alternatively, we could invalidate the query with a similar approach. The drawback here is that the data will only be refetched once the user navigates back to the screen, which will have them viewing a loading state (with the previous approach, the data would have been fetched while they were on some other screen).
+
+So it's basically a tradeoff between simpler, less error prone logic with "refetch on focus" versus a snappier user experience when refetching right after the mutation. Do whatever you think is better for your app(s).
+
 ## React Native Caching Hard
 
 Because of screens staying mounted during navigation, putting extra thought into how we're managing our cache React Native becomes necessary.
