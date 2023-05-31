@@ -1,0 +1,181 @@
+---
+title: Is Your MVP Really an MVP?
+author: Isaac Way
+pubDatetime: 2023-05-27T21:50:34.842Z
+postSlug: not-an-mvp
+featured: true
+draft: false
+tags:
+  - consulting
+  - mvp
+  - app development
+description: Everyone says they want to build an MVP, but how many times does that actually lead to the development of something minimal?
+---
+
+import { Image } from "@astrojs/image/components";
+
+import VeryImportantText from "@components/VeryImportantText.astro";
+
+I've been a mobile app consultant for about 3 years now. By consultant, I mean I advise customers, product managers, or other stakeholders on the development of their mobile applications. I also code those applications.
+
+Typically people come to our agency, [HSTK](https://hstk.com), with a vague idea about what they want their app to do and we then guide them through the full app development process. We more or less transform something half baked into a fully fledged app idea through a process we call "discovery".
+
+Then we design the app (a designer builds a big figma document with all the necessary screens), and then we build the app (we write hella code).
+
+Throughout this process, we want to do our best to have an idea and design that is as close to an MVP (Minimum Viable Product) as possible.
+
+## What's an MVP
+
+The dictionary definition of an MVP is:
+
+<VeryImportantText text="Minimum Viable Product - An early, basic version of a product (typically a computer program or piece of technology) that meets the minimum necessary requirements for use but can be adapted and improved in the future, especially after customer feedback." />
+
+In my own words, an MVP is "the smallest set of features that can be released to users to begin idea validation and iteration".
+
+It's something that allows users to try out our idea, but also something that includes mechanisms that allows us to validate and iterate. We need to be able to know up front how the thing is being used and whether people like it. There are different ways to accomplish this - we can use analytics, feedback forms, or other methods where people can provide feedback (maybe we even use social media).
+
+Our MVP should:
+(1) Be the absolute minimal feature set required to implement the apps "idea"
+(2) Allow us to understand whether users like the app and how they're using it (so we can validate).
+
+I think part (2) is often left out when thinking about an MVP, especially by clients. It's so important to be able to understand the users. Maybe the client such a genius that the idea just takes off with 0 validation, but probably not.
+
+More likely, iteration is going to be necessary land on something users will want, and iteration can't be done without objective measures of success. So don't skimp on (2). In fact - it should be front and center.
+
+### MVP Features
+
+How do we decide which features our MVP? What's the core idea of the app? What do we actually need to test this idea?
+
+Even with the mindset of "I'm only going to include things I absolutely need in this application", it's really easy for to include things that actually aren't part of the core idea.
+
+#### A Story Putting Too Many Features Into the MVP
+
+Here I'm going to reference a project we built a couple years back where we probably let a couple of features slip through that weren't really MVP.
+
+We built an app for a client that was to be a learning app that allows users to work through "learning pathways" which were just collections of individual pieces of content, as well as track personal learning progress through the use widgets that showed total learning progress as well as some assessments that could be taken multiple times by users.
+
+The client also wanted to be able to tell users about learning events that were going on locally in their area, as well as have an onboarding flow for the user that required them to input some demographic information.
+
+The client also wanted even more features than that. So what is the core MVP here? We have the list of features that we want, but how many of those are really needed for validation of the idea?
+
+Well of course we need the ability to work through the course content. We also need the ability for users to track progress throughout the app, that's part of the core idea right?
+
+And for in person events, that's going to help them learn as well! That's pretty important. Definitely need to include that. Plus we absolutely need demographics about the user. How else do we know if we're reaching the target audience?
+
+See where I'm going with this? The core idea of our app is a learning platform, and there are a lot of things that might seem crucial to the client or stakeholder about realizing that core idea.
+
+But what do we really, really need to have here to validate the idea is good and something that people want? In my opinion, we didn't absolutely need the events features, and we didn't need the onboarding feature, because niether of those necessary to validate whether people want to work through this learning content which is the core of the app.
+
+In fact, adding those things make it harder to actually validate the core idea because we're not able to validate in isolation thanks to the additional features.
+
+#### Getting the feature set right
+
+Even if we were able to recognize that we didn't absolutely need the events feature and the onboarding feature to validate the idea, that still doesn't mean it's totally obvious what should be in the MVP.
+
+In our case, we also had the "Assessment" feature that allowed users to track their progress through the application. Is tracking progress part of the core idea of the app? I think the argument could be made either way.
+
+If I had to do it over, I think the assessment would stay. Tracking progress is a fundamental part of learning, the assessment is a way to do that.
+
+We also could have cut that as well, and just validated the content aspect of the app, but I'm not so sure we'd really be validating the full idea at that point (the idea being a learning platform that allows users to measure their improvement). For me at least, it's a tough call.
+
+All I can say is that your MVP should be much less polished and include many less features than you or your clients probably want it to. When it launches it shouldn't feel like we did everything we wanted to or that it includes everything we wish it included.
+
+### Design MVPs
+
+Once we have a feature set decided (in the previous example we decided too many 😅), next we need to actually design our app. A design is typically a figma document with a big bunch of screens, and conceptually can be thought of as the implementation of an idea.
+
+In many software companies, there's a process of "design review", where developers and/or product managers and/or other people look over the designs and make sure that:
+
+(1) The designs make sense from a functional stand point
+(2) The designs implement the idea core idea
+(3) The designs are made in a way that maximizes value per unit of developer effort.
+
+Number 3 is the interesting one here. The designers job is to make the app beautiful and often don't have much of a concept of how difficult some piece of UI or implementation will be from a developer standpoint.
+
+Interestingly, in situations where we allow the designer to come up with all the screens and flows, the designers are actually the ones deciding how the app should be implemented at a high level.
+
+#### Making Sure Our Design is MVP
+
+Since designers don't have a strong concept of technical difficulty of their implementations, it means they can come up with things that may result in high difficulty but low value for the user / customer.
+
+One great example of this is a custom date picker calendar:
+
+<Image
+  width={736}
+  height={700}
+  alt="custom date picker"
+  format="png"
+  src="/assets/articles/not-an-mvp/calendar.png"
+/>
+
+This is something that can take a large amount of time from a development perspective, but really doesn't contribute very much to improving the user experience or implementing the core idea of the application.
+
+We could just use the built in browser date picker and it would take a couple minutes instead of hours:
+
+<Image
+  width={736}
+  height={800}
+  alt="built in date picker"
+  format="png"
+  src="/assets/articles/not-an-mvp/built-in.png"
+/>
+
+Looks fine for an MVP, and saves a large amount of development time, which again allows us to get to the validation stage of the idea much quicker. Surely no one is using an app for the date picker design... unless it's the front and center feature of the app that is.
+
+It makes a lot of sense to call things out that can cut a lot of dev time for little or no value loss during the design review process and suggest that we use the built in browser date picker. Generally speaking, during design reviews for MVPs we should be constantly on the lookout for things that are hard to implement but also don't provide much value to the users, and cut those out. Personally speaking, I sometimes get scared of hurting the designers feelings, and have to make myself call this stuff out against my own will.
+
+#### Design MVPs - Large Changes
+
+Sometimes the design can be altered in more significant ways in order to greatly improve our value-to-effort ratio that we're trying to optimize for. For example there could be entire screens that we can eliminate if we rethink a feature slightly.
+
+One great example of this is with sign in / sign up flows. I've seen a lot of MVP designs include primarily email / password login flows (versus something with sign in with Google / Apple / Whatever Else). If I had to guess why they're so common it's that perhaps they're seen as the most "basic" version of sign-in and sign-up, so people just assume it's the easiest, but it's not true at all.
+
+Sign in with email and passwords are actually much more expensive to implement from a developer standpoint because then we need password reset flows, logic to check for email collisions, password hashing, email verification, and a bunch of other stuff. AND they make the user experience worse because we're making the user fill out forms.
+
+So if we see sign in with Google / Apple in the design, we can push to have it eliminated in favor of some other option because it makes the UX better and decreases dev time. That's a win-win.
+
+Being able to spot this type of stuff really comes down to being able to look at some design and understand on some level the technical difficulty with implementing it, as well as thinking about the user. So being able to effectively analyze a design and determine opportunities for making modification to improve the value-to-cost ratio requires development experience (because that's the only way to understand the implementation cost) plus the ability to empathize with the user.
+
+## Low overhead feedback mechanisms
+
+So we need feedback mechanisms (analytics, direct user feedback, bug reports) to make an MVP, we also want to make sure that our feedback is MVP. That means deciding what's worth implementing to be able to connect with the user while also not requiring too much effort.
+
+This is something I less experience in with regards to the amount of different methods of feedback collection I've implemented and their efficacy, so I'll try not to talk out of my ass too much here and just say that we want to maximize value-to-cost with regards to the amount of useful objective measurements we're taking of how our users are receiving the app.
+
+Here are some low cost analytics that might be useful:
+
+- Record user navigation events in your app (which screens / pages they go to how often)
+  - Something like this can take minutes to set up in your application
+- User retention metrics compared against average retention metrics
+  - 1 day retention
+  - 2 week retention
+  - 1 month retention
+
+This is just the data - making use of data is a skill in itself.
+
+And as for user feedback, it's a little trickier. We actually have to convince someone to tell us why they like they're app, and then read between the lines of the feedback to discover what their pain points are. Some ideas:
+
+- An in-app feedback system
+  - Requires integration with your api or some other API
+  - Probably the most expensive option
+- Link to a Google form
+  - Very low cost
+  - Seems a bit janky
+  - Provides a really nice experience for the product owner for free (Google's web UI)
+- A discord community
+  - Can create conversations between users
+  - Low cost
+  - Might require moderation
+  - Might lead to higher engagement
+
+These are just some ideas, decide what's best for your application and your context.
+
+## Your MVP Probably Isn't an MVP
+
+A mistake that I've made many times, and seen made many many times, is thinking that our MVP should include more features than it actually should. That it should be released in a more refined state than it actually needs to be released in.
+
+If you don't have a lot of experience building MVPs, first decide everything that you think is absolutely necessary for an MVP. Cut that in half. Now you actually might be somewhere close to the MVP. It's so easy to think you need stuff that you don't. It's really easy to want to have everything figured out. No matter how much time you spend thinking about something, you will have very little figure out about what users are going to want until you actually launch something and see what happens.
+
+So it makes sense to get to that launch period as early as possible to start getting objective facts as to whether your idea is actually worth anything or not and whether it's something users will actually want.
+
+Thanks for reading :)
