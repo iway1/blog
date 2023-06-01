@@ -6,7 +6,7 @@ postSlug: bet-on-react-native
 featured: true
 draft: false
 tags:
-
+  - react native
 description: Years ago I decided to pick up React Native. That turned out to be a really good idea.
 ---
 
