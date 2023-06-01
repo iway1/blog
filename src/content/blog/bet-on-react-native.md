@@ -65,6 +65,8 @@ Speaking from personal experience, React Native isn't perfect. There are a lot o
 
 Sometimes jank just randomly appears and has to be fixed. For example I've seen some flickering issues during renders in `react-navigation` that appeared for pretty much no reason, and had to just randomly change stuff until they were no longer happening. The issue was causing some element to appear in the wrong place on first render, and then it would visibly "jump" to the correct location. This is just one example, and stuff like that isn't super common, but it does happen and does require the developer to fix it or have jank in their app.
 
+The good news is there's always a way to fix it, but it's worth mentioning these types of issues are probably not going to happen when taking a Native approach with something like SwiftUI.
+
 ### Dependencies
 
 Another big issue is that you have to rely on React Native SDKs and libraries to do a lot of things. To do most things, really.
