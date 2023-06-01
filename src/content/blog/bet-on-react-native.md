@@ -30,11 +30,13 @@ React Native makes up:
 - 26% of the top 100 finance apps
 - 28% of the top 100 food and drink apps
 
-Given the fact that there are many cross platform competitors (Flutter, Ionic, Kotlin, Xamarin, webview wrappers) as well as Native options, that's a decent percentage. Importantly, that percentage was much lower just a few years ago. So adoption is increasing, and will probably continue to increase.
+Given the fact that there are many cross platform competitors (Flutter, Ionic, Kotlin, Xamarin) as well as Native options, that's a decent percentage. Importantly, that percentage was much lower just a few years ago. So adoption is increasing, and will probably continue to increase.
 
 ## Are React Native apps _good_?
 
-We can definitely build apps faster but are the apps _good_? Some times you may see criticism online about React Native apps being janky or lower quality than Native apps or Flutter. The app store numbers would say other wise. For example, in the case of the top 100 shopping apps, the average app rating is 4.78 which is higher than the average of 4.7 of the rest of the apps. Flutter here has an average rating 3.84.
+We can definitely build apps faster but are the apps _good_? Some times you may see criticism online about React Native apps being janky or lower quality than Native apps or Flutter. The app store numbers would say other wise.
+
+For example, in the case of the top 100 shopping apps, the average app rating is 4.78 which is higher than the average of 4.7 of the rest of the apps. Flutter here has an average rating 3.84.
 
 I don't really think it's worth digging to much deeper into this.
 
